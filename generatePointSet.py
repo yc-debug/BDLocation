@@ -42,3 +42,14 @@ def generateEdgeSetWithLength():
         res.append(temp)
 
     return res
+
+
+def generateStations():
+    data = pd.read_csv('data/stations.csv')
+    time = data['time_stamp']
+    x = data['x']
+    y = data['y']
+    res = []
+    for i in range(len(time)):
+        res.append([time[i], [x[i], y[i]]])
+    return res

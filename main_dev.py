@@ -38,7 +38,7 @@ test_data = pd.read_csv(accel_path)
 df = pd.DataFrame(test_data)
 ax = data['Acceleration_X']
 ay = data['Acceleration_Y']
-sites = [[-359.224, -95.3531], [-215.406586, -61.19653058], [-671.7, -183.6], [-474.69, -238.65]]
+sites = generatePointSet.generateStations()
 Index = data['Index']
 Distance = data['Distance']
 
@@ -81,6 +81,9 @@ def get_max_probability_point(points, decline_noise_point):
 def enhance_result(points, edge):
     enhance_path = [(points[0])]
     for p in range(1, len(points)):
+        if edge[p] == -1:
+            enhance_path.append(points[p])
+            continue
         if edge[p] == edge[p - 1]:
             enhance_path.append(points[p])
             continue
@@ -137,9 +140,9 @@ def get_transfer_probability(pre_p, pre_e, p, e, dis):
 
 def find_site(now_location, sites_locations):
     for item in sites_locations:
-        temp = geometricCalculate.computeDistance(now_location, item)
+        temp = geometricCalculate.computeDistance(now_location, item[1])
         if temp < CLD_T:
-            return True, item
+            return True, item[1]
     return False, []
 
 
@@ -168,7 +171,7 @@ edge_nums = []
 last_index = 0
 t_p = []
 e_p = []
-model_path = 'models/model_12_18.pth'
+model_path = 'models/model_12_19_500000.pth'
 model = torch.load(model_path)
 model = model.to('cpu')
 for i in tqdm(range(0, len(xy_coor))):
@@ -177,6 +180,7 @@ for i in tqdm(range(0, len(xy_coor))):
         index = Index[i]
         if is_cld(index, model) > 0.1:
             result.append(site)
+            edge_nums.append(-1)
             continue
 
     # 获取第i个通过卡尔曼滤波获取的点

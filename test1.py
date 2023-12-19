@@ -26,15 +26,14 @@ import csv
 # point2 = np.array([-100.3528226, -103.4428343])
 # print(distance(point, point1, point2))
 
-
-import torch
-
-x1_t = torch.normal(2 * torch.ones(100, 2), 1)
-y1_t = torch.zeros(100)
-
-x2_t = torch.normal(-2 * torch.ones(100, 2), 1)
-y2_t = torch.ones(100)
-
-x_t = torch.cat((x1_t, x2_t), 0)
-y_t = torch.cat((y1_t, y2_t), 0)
-print(y_t)
+data = pd.read_csv('data/CLD/gro_accel.csv')
+df = pd.DataFrame(data)
+labels = df.iloc[:, -1]
+labels = np.array(labels).reshape(-1, 1)
+length = len(labels)
+num = 0
+for i in range(length):
+    if labels[i] == 1:
+        num += 1
+print(num)
+print(num/length)
