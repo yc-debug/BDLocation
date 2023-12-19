@@ -5,6 +5,7 @@ import pyproj
 import generatePointSet
 import geometricCalculate
 import KalmanFilter
+import getAllPath
 import matplotlib.pyplot as plt
 import math
 from tqdm import tqdm, trange
@@ -12,7 +13,7 @@ from tqdm import tqdm, trange
 
 # 读取数据
 def get_data():
-    temp = pd.read_csv('data/dataset2.csv')
+    temp = pd.read_csv('data/dataset3.csv')
     return temp
 
 
@@ -97,10 +98,12 @@ img = plt.imread("data/1.jpg")
 # plt.ylim(-350, 130)
 fig, ax = plt.subplots()
 ax.imshow(img, extent=[-850, 220, -350, 130])
-# plt.plot(*zip(*xy_coor), alpha=0.5, color='red', label='measurement value')
+plt.plot(*zip(*xy_coor), alpha=0.5, color='red', label='measurement value')
 # plt.plot(*zip(*result), color='blue', label="estimate value")
-plt.scatter(*zip(*xy_coor), s=5, color='red')
-# plt.plot(*zip(*result), color='blue', label="estimate value")
-plt.scatter(*zip(*result), s=5)
+# plt.scatter(*zip(*xy_coor), s=5, color='red')
+plt.plot(*zip(*result), color='blue', label="estimate value")
+# plt.scatter(*zip(*result), s=5)
 # plt.plot(*zip(*true_data), alpha=0.5, color='green', label='true value')
+print(getAllPath.get_path_length(result))
 plt.show()
+

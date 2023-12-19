@@ -16,11 +16,12 @@ import KalmanFilter
 import matplotlib.pyplot as plt
 import math
 from tqdm import tqdm, trange
+import torch
 
 
 # 读取数据
 def get_data():
-    temp = pd.read_csv('data/dataset2.csv')
+    temp = pd.read_csv('data/dataset4_200.csv')
     return temp
 
 
@@ -32,9 +33,14 @@ u = u * scale
 data = get_data()
 Longitude = data['Longitude']
 Latitude = data['Latitude']
-
-Acceleration_X = data['Acceleration_X']
-Acceleration_Y = data['Acceleration_Y']
+accel_path = 'D:\\Desktop\\研究生毕设\\2023_11_20_12_16_52\\gyro_accel.csv'
+test_data = pd.read_csv(accel_path)
+df = pd.DataFrame(test_data)
+ax = data['Acceleration_X']
+ay = data['Acceleration_Y']
+sites = [[-359.224, -95.3531], [-215.406586, -61.19653058], [-671.7, -183.6], [-474.69, -238.65]]
+Index = data['Index']
+Distance = data['Distance']
 
 start_point = [116.3403876, 39.9509437]
 proj = pyproj.Proj(proj='tmerc', lon_0=start_point[0], lat_0=start_point[1],
@@ -48,8 +54,10 @@ for i in range(0, len(Latitude)):
 # 采样1000次
 size = len(data)
 # print(size)
-x_pred, y_pred = KalmanFilter.KalMan(xy_coor, size, Acceleration_X, Acceleration_Y)
+x_pred, y_pred = KalmanFilter.KalMan(xy_coor, size, ax, ay)
 true_data = generatePointSet.generateEdgeSet()
+
+CLD_T = 5
 
 
 def get_emission_probability(x):
@@ -91,23 +99,16 @@ def enhance_result(points, edge):
     return enhance_path
 
 
-def get_path_length(path):
-    length = 0
-    for i in range(1, len(path)):
-        point1 = path[i-1]
-        point2 = path[i]
-        length += geometricCalculate.computeDistance(point1, point2)
-    return length
-
-
 def transfer_formula(length, dis):
-    return 1-math.fabs(1-(length/dis))
+    x = length / dis
+    return math.e ** (-1 * math.pi * (x - 1) ** 2)
+    # return 1 - math.fabs(1 - (length / dis))
 
 
 def get_transfer_probability(pre_p, pre_e, p, e, dis):
     # 判断是否在同一条直线上
     if pre_e == e:
-        return transfer_formula(get_path_length([pre_p, p]), dis)
+        return transfer_formula(getAllPath.get_path_length([pre_p, p]), dis * 10)
     max_p = 0
     # dis = dis * scale
     # 计算路径
@@ -125,19 +126,59 @@ def get_transfer_probability(pre_p, pre_e, p, e, dis):
         else:
             path.append(p)
         # 计算路径长度
-        length = get_path_length(path)
+        length = getAllPath.get_path_length(path)
         # 计算该条路径的转移概率
-        probability_t = transfer_formula(length, 100)
+        probability_t = transfer_formula(length, dis)
         # 获取最大转移概率
         if probability_t > max_p:
             max_p = probability_t
     return max_p
 
 
+def find_site(now_location, sites_locations):
+    for item in sites_locations:
+        temp = geometricCalculate.computeDistance(now_location, item)
+        if temp < CLD_T:
+            return True, item
+    return False, []
+
+
+# 判断是否闭环
+def is_cld(num, model):
+    start_index = num - 25
+    if start_index < 0:
+        start_index = 0
+    end_index = num + 25
+    if end_index > len(df):
+        end_index = len(df)
+    test = df.iloc[start_index:end_index, 1:len(df.columns) - 1]
+    test = torch.from_numpy(np.array(test)).float()
+    outputs = (model(test) > 0.5).float()
+    length = len(outputs)
+    times = 0
+    for i in range(length):
+        if outputs[i].item() == 1:
+            times += 1
+    return times / length
+
+
 # 计算具体位置
 result = []
 edge_nums = []
+last_index = 0
+t_p = []
+e_p = []
+model_path = 'models/model_12_18.pth'
+model = torch.load(model_path)
+model = model.to('cpu')
 for i in tqdm(range(0, len(xy_coor))):
+    start_cld, site = find_site(xy_coor[i], sites)
+    if start_cld:
+        index = Index[i]
+        if is_cld(index, model) > 0.1:
+            result.append(site)
+            continue
+
     # 获取第i个通过卡尔曼滤波获取的点
     p_point = [x_pred[i], y_pred[i]]
     intersections = {}
@@ -169,17 +210,27 @@ for i in tqdm(range(0, len(xy_coor))):
         # 计算每个点的转移概率
         est_point = []
         est_edge = 0
-        max_probability = 0
+        max_probability = -1
+        t_pro = 0
+        e_pro = 0
+        s = 0
         # 67, 66, 65
-        if i == 69:
-            print(intersections)
+        if len(intersections.keys()) > 0:
+            s = Distance[i] - Distance[last_index]
+            if s == 0:
+                continue
+            # print(i, " ", last_index, " ", s)
+            last_index = i
         for k in intersections.keys():
             for point in intersections[k]:
                 pre_point = result[-1]
                 pre_edge = true_data[edge_nums[-1]]
                 # 计算转移概率
+                # 计算位移点之间的距离
                 # transfer_probability = 1
-                transfer_probability = get_transfer_probability(pre_point, pre_edge, point, true_data[k], dis=3)
+                # if s == 38.33052529529503:
+                #     print(1)
+                transfer_probability = get_transfer_probability(pre_point, pre_edge, point, true_data[k], dis=s)
 
                 # 计算发射概率
                 emit_probability = get_emission_probability(geometricCalculate.computeDistance(point, p_point))
@@ -194,9 +245,13 @@ for i in tqdm(range(0, len(xy_coor))):
                     est_point = point
                     est_edge = k
                     max_probability = probability
+                    t_pro = transfer_probability
+                    e_pro = emit_probability
         if len(est_point) > 0:
             result.append(est_point)
             edge_nums.append(est_edge)
+            t_p.append(t_pro)
+            e_p.append(e_pro)
 
 result = enhance_result(result, edge_nums)
 img = plt.imread("data/1.jpg")

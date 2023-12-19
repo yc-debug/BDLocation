@@ -38,7 +38,7 @@ def generateEdgeSetWithLength():
     length_t = data['Length_t']
     res = []
     for i in range(0, len(start_point_x)):
-        temp = [[start_point_x[i], start_point_y[i]], [end_point_x[i], end_point_y[i]], length_c, length_t]
+        temp = [[start_point_x[i], start_point_y[i]], [end_point_x[i], end_point_y[i]], length_c[i], length_t[i]]
         res.append(temp)
 
     return res
