@@ -64,7 +64,7 @@ def get_data_new(dis):
                     visited[index1] == 0:
                 visited[index1] = 1
                 now_index = index1
-                temp.append(row['Unix time[nanosec]'])
+                temp.append(row1['Unix time[nanosec]'])
                 temp.append(row['lat[deg]'])
                 temp.append(row['lon[deg]'])
                 temp.append(row1['ax[m/s^2]'])
@@ -81,6 +81,29 @@ def get_data_new(dis):
     return res
 
 
+# 解析数据
+def get_data_by_gps(dis):
+    res = []
+    # 解析GPS数据
+    for index, row in tqdm(accel.iterrows(), total=len(accel)):
+        for index1, row1 in gps.iterrows():
+            t = abs(row1['Unix time[nanosec]'] - row['Unix time[nanosec]'] / 1000000)
+            if 0 <= t <= dis:
+                temp = [row['Unix time[nanosec]'] / 1000000,
+                        row1['lat[deg]'], row1['lon[deg]'],
+                        row['ax[m/s^2]'],
+                        row['ay[m/s^2]'],
+                        row['az[m/s^2]'],
+                        row['gx[rad/s]'],
+                        row['gy[rad/s]'],
+                        row['gz[rad/s]'],
+                        index,
+                        s[index]]
+                res.append(temp)
+
+    return res
+
+
 def merge_data(file_name, dis):
     print(file_name, " 生成新数据中。。。")
     data = get_data_new(dis)
@@ -93,8 +116,7 @@ def merge_data(file_name, dis):
     # 写入数据
     with open(file_name, 'a', newline='') as file:
         writer = csv.writer(file)
-        for row in data:
-            writer.writerow(row)
+        writer.writerows(data)
     print(file_name, " 生成新数据完成！！！")
 
 
@@ -105,3 +127,8 @@ def merge_data(file_name, dis):
 # merge_data('data/dataset4_30.csv', 30)
 # merge_data('data/dataset4_40.csv', 40)
 merge_data('data/dataset4_200.csv', 200)
+# merge_data('data/dataset6/dataset6_10.csv', 10)
+# merge_data('data/dataset6/dataset6_20.csv', 20)
+# merge_data('data/dataset6/dataset6_30.csv', 30)
+# merge_data('data/dataset6/dataset6_40.csv', 40)
+# merge_data('data/dataset6/dataset6_50.csv', 50)

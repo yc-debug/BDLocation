@@ -1,4 +1,5 @@
 import pandas as pd
+import csv
 
 
 def generatePointSet():
@@ -53,3 +54,19 @@ def generateStations():
     for i in range(len(time)):
         res.append([time[i], [x[i], y[i]]])
     return res
+
+
+def saveStationsError(file_name, data):
+    res = [['station_id', 'error']]
+    for i in data.keys():
+        res.append([i, data[i]])
+    with open(file_name, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerows(res)
+
+
+def readStationsError(file_name):
+    data = pd.read_csv(file_name)
+    station_id = data['station_id']
+    error = data['error']
+    return station_id, error
